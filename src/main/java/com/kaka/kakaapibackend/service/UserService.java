@@ -3,6 +3,7 @@ package com.kaka.kakaapibackend.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.kaka.kaapicommon.model.entity.User;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -56,4 +57,11 @@ public interface UserService extends IService<User> {
      * @return
      */
     boolean userLogout(HttpServletRequest request);
+
+    /**
+     * 用户头像上传
+     * @param file
+     * @return
+     */
+    String uploadAvatar(MultipartFile file);
 }

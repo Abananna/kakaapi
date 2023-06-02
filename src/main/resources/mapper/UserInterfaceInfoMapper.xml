@@ -7,7 +7,7 @@
     <resultMap id="BaseResultMap" type="com.kaka.kaapicommon.model.entity.UserInterfaceInfo">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="userId" column="userId" jdbcType="BIGINT"/>
-            <result property="interfaceId" column="interfaceInfoId" jdbcType="BIGINT"/>
+            <result property="interfaceInfoId" column="interfaceInfoId" jdbcType="BIGINT"/>
             <result property="totalNum" column="totalNum" jdbcType="INTEGER"/>
             <result property="leftNum" column="leftNum" jdbcType="INTEGER"/>
             <result property="status" column="status" jdbcType="INTEGER"/>
@@ -17,13 +17,13 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,userId,interfaceId,
+        id,userId,interfaceInfoId,
         totalNum,leftNum,status,
         createTime,updateTime,isDelete
     </sql>
 
     <select id="listTopInvokeInterfaceInfo" resultType="com.kaka.kaapicommon.model.entity.UserInterfaceInfo">
-        select interfaceInfoId interfaceId, sum(totalNum) totalNum
+        select interfaceInfoId , sum(totalNum) totalNum
         from user_interface_info
         group by interfaceInfoId
         order by totalNum desc limit #{limit};

@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * @author kaka
  */
 @Configuration
-@MapperScan("com.kaka.project.mapper")
+@MapperScan("com.kaka.kakaapibackend.mapper")
 public class MyBatisPlusConfig {
 
     /**

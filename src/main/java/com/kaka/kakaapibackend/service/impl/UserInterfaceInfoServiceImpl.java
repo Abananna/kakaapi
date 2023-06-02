@@ -32,7 +32,7 @@ public class UserInterfaceInfoServiceImpl extends ServiceImpl<UserInterfaceInfoM
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         if(add) {
-            if (userinterfaceInfo.getInterfaceId() < 0 || userinterfaceInfo.getUserId() < 0) {
+            if (userinterfaceInfo.getInterfaceInfoId() < 0 || userinterfaceInfo.getUserId() < 0) {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "接口或用户不存在");
             }
         }

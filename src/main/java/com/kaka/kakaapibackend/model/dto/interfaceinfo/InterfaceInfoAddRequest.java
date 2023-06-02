@@ -53,6 +53,11 @@ public class InterfaceInfoAddRequest implements Serializable {
     private String method;
 
     /**
+     * 接口方法名
+     */
+    private String invokeMethod;
+
+    /**
      * 创建人
      */
     private Long userId;

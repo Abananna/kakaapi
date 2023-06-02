@@ -28,7 +28,7 @@ public class UserInterfaceInfoQueryRequest extends PageRequest implements Serial
     /**
      * 接口id
      */
-    private Long interfaceId;
+    private Long interfaceInfoId;
 
     /**
      * 总调用次数

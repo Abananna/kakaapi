@@ -26,7 +26,7 @@ public class UserInterfaceInfoAddRequest implements Serializable {
     /**
      * 接口id
      */
-    private Long interfaceId;
+    private Long interfaceInfoId;
 
     /**
      * 总调用次数

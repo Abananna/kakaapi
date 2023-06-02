@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.annotation.Resource;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -43,7 +44,7 @@ public class AnalysisController {
     public BaseResponse<List<InterfaceInfoVO>> listTopInvokeInterfaceInfo() {
         //首先从user_interface_info 表中查出排行榜中的数据
         List<UserInterfaceInfo> userInterfaceInfos = userInterfaceInfoService.listTopInvokeInterfaceInfo(3);
-        Map<Long, List<UserInterfaceInfo>> interfaceInfoIdMap = userInterfaceInfos.stream().collect(Collectors.groupingBy(UserInterfaceInfo::getInterfaceId));
+        Map<Long, List<UserInterfaceInfo>> interfaceInfoIdMap = userInterfaceInfos.stream().collect(Collectors.groupingBy(UserInterfaceInfo::getInterfaceInfoId));
         //根据id获取interface接口信息
         QueryWrapper<InterfaceInfo> queryWrapper = new QueryWrapper<>();
         queryWrapper.in("id",interfaceInfoIdMap.keySet());

@@ -1,7 +1,10 @@
 package com.kaka.kakaapibackend.service.impl;
 
+import cn.hutool.core.date.DateTime;
+import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.crypto.digest.DigestUtil;
+import com.aliyun.oss.OSSClient;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kaka.kakaapibackend.common.ErrorCode;
@@ -12,11 +15,18 @@ import com.kaka.kakaapibackend.service.UserService;
 import com.kaka.kaapicommon.model.entity.User;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.io.InputStream;
+
+import static com.kaka.kakaapibackend.constant.CommonConstant.DEFAULT_AVATAR;
+import static com.kaka.kakaapibackend.constant.CommonConstant.DEFAULT_NAME;
 
 
 /**
@@ -31,6 +41,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Resource
     private UserMapper userMapper;
+
+    @Resource
+    private OSSClient ossClient;
+
+    @Resource
+    private Environment env;
 
     /**
      * 盐值，混淆密码
@@ -72,6 +88,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             user.setUserPassword(encryptPassword);
             user.setAccessKey(accessKey);
             user.setSecretKey(secretKey);
+            user.setAvatarUrl(DEFAULT_AVATAR);
+            user.setUserName(DEFAULT_NAME);
             boolean saveResult = this.save(user);
             if (!saveResult) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败，数据库错误");
@@ -123,7 +141,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (currentUser == null || currentUser.getId() == null) {
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
-        // 从数据库查询 TODO：或者可以走缓存
+        // 从数据库查询
         long userId = currentUser.getId();
         currentUser = this.getById(userId);
         if (currentUser == null) {
@@ -159,6 +177,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 移除登录态
         request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
         return true;
+    }
+
+    @Override
+    public String uploadAvatar(MultipartFile file) {
+        String url = null;
+        try {
+            InputStream inputStream = file.getInputStream();
+            String originalFilename = file.getOriginalFilename();
+            //防指文件重名
+            String uuidFileName = UUID.randomUUID().toString(true) + originalFilename;
+            //精确时间
+            String dataTime = DateTime.now().toString("yyyy-MM-dd");
+            //拼接文件名
+            String finalFileName = dataTime + uuidFileName;
+            //拼接根目录
+            String dirFileName = env.getProperty("aliyun.oss.dir.prefix") + finalFileName;
+
+            //创建oss请求，传入三个参数
+            ossClient.putObject(env.getProperty("aliyun.oss.bucketName"),dirFileName, inputStream);
+
+            url = "https://" + env.getProperty("aliyun.oss.bucketName") + "." + env.getProperty("aliyun.oss.endpoint") + "/" + finalFileName;
+
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return url;
     }
 
 }

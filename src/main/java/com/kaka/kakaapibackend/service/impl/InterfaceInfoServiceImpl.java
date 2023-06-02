@@ -1,6 +1,9 @@
 package com.kaka.kakaapibackend.service.impl;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kaka.kakaapibackend.common.ErrorCode;
 import com.kaka.kakaapibackend.exception.BusinessException;
@@ -24,25 +27,31 @@ public class InterfaceInfoServiceImpl extends ServiceImpl<InterfaceInfoMapper, I
         if (interfaceInfo == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+
         String name = interfaceInfo.getName();
         String description = interfaceInfo.getDescription();
         String url = interfaceInfo.getUrl();
         String requestHeader = interfaceInfo.getRequestHeader();
         String responseHeader = interfaceInfo.getResponseHeader();
-        Integer status = interfaceInfo.getStatus();
         String method = interfaceInfo.getMethod();
-        Long userId = interfaceInfo.getUserId();
-        Date createTime = interfaceInfo.getCreateTime();
-        Date updateTime = interfaceInfo.getUpdateTime();
-        Integer isDelete = interfaceInfo.getIsDelete();
+        String requestParams = interfaceInfo.getRequestParams();
 
-        // 创建时，所有参数必须非空
-        if (add) {
-            if (StringUtils.isAnyBlank(description,requestHeader) || ObjectUtils.anyNull(name, url)) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR);
-            }
+        List<String> neededParams = Arrays.asList(name, description, url, requestHeader, responseHeader, method, requestParams);
+        //参数必须非空
+        if (StringUtils.isAnyBlank(name, description, url, requestHeader, responseHeader, method, requestParams) || ObjectUtils.anyNull(neededParams)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数不能为空");
+        }
+        //method需要在常用方法内
+        if(!isContainsMethod(method)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求方法不支持");
         }
 
+
+    }
+
+    private boolean isContainsMethod(String method) {
+        List<String> methodList = Arrays.asList("GET","POST","PUT","DELETE");
+        return methodList.contains(method.toUpperCase());
     }
 }
 

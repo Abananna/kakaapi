@@ -31,7 +31,7 @@ public class Knife4jConfig {
                         .build())
                 .select()
                 // 指定 Controller 扫描包路径
-                .apis(RequestHandlerSelectors.basePackage("com.kaka.project.controller"))
+                .apis(RequestHandlerSelectors.basePackage("com.kaka.kakaapibackend.controller"))
                 .paths(PathSelectors.any())
                 .build();
     }

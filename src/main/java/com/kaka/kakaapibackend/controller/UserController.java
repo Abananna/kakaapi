@@ -1,6 +1,10 @@
 package com.kaka.kakaapibackend.controller;
 
+import cn.hutool.core.date.DateTime;
+import cn.hutool.core.lang.UUID;
+import com.aliyun.oss.OSSClient;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.plugins.pagination.PageDTO;
 import com.kaka.kakaapibackend.common.BaseResponse;
@@ -14,10 +18,15 @@ import com.kaka.kakaapibackend.service.UserService;
 import com.kaka.kaapicommon.model.entity.User;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,6 +41,7 @@ public class UserController {
 
     @Resource
     private UserService userService;
+
 
     // region 登录相关
 
@@ -64,7 +74,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/login")
-    public BaseResponse<User> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
+    public BaseResponse<UserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         if (userLoginRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -74,7 +84,9 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.userLogin(userAccount, userPassword, request);
-        return ResultUtils.success(user);
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user,userVO);
+        return ResultUtils.success(userVO);
     }
 
     /**
@@ -100,6 +112,14 @@ public class UserController {
      */
     @GetMapping("/get/login")
     public BaseResponse<UserVO> getLoginUser(HttpServletRequest request) {
+        User user = userService.getLoginUser(request);
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user, userVO);
+        return ResultUtils.success(userVO);
+    }
+
+    @GetMapping("/current")
+    public BaseResponse<UserVO> getCurrentUser(HttpServletRequest request) {
         User user = userService.getLoginUser(request);
         UserVO userVO = new UserVO();
         BeanUtils.copyProperties(user, userVO);
@@ -235,5 +255,21 @@ public class UserController {
         return ResultUtils.success(userVOPage);
     }
 
-    // endregion
+    /**
+     * 头像上传
+     * @param file
+     * @return
+     */
+    @PostMapping("/upload")
+    public BaseResponse<Boolean> upload(@RequestParam("file") MultipartFile file, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        String url = userService.uploadAvatar(file);
+
+        UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", loginUser.getId());
+        updateWrapper.set("avatarUrl", url);
+        userService.update(updateWrapper);
+        return ResultUtils.success(true);
+
+    }
 }

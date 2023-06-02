@@ -3,6 +3,7 @@ package com.kaka.kakaapibackend.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
+import com.kaka.kaapicommon.model.entity.UserInterfaceInfo;
 import com.kaka.kakaapibackend.annotation.AuthCheck;
 import com.kaka.kakaapibackend.common.*;
 import com.kaka.kakaapibackend.constant.CommonConstant;
@@ -14,6 +15,7 @@ import com.kaka.kakaapibackend.model.dto.interfaceinfo.InterfaceInfoQueryRequest
 import com.kaka.kakaapibackend.model.dto.interfaceinfo.InterfaceInfoUpdateRequest;
 import com.kaka.kakaapibackend.model.enums.InterfaceInfoStatusEnum;
 import com.kaka.kakaapibackend.service.InterfaceInfoService;
+import com.kaka.kakaapibackend.service.UserInterfaceInfoService;
 import com.kaka.kakaapibackend.service.UserService;
 import com.kaka.kaapiclientstarter.client.KaApiClient;
 import com.kaka.kaapicommon.model.entity.InterfaceInfo;
@@ -25,6 +27,9 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -42,6 +47,9 @@ public class InterfaceInfoController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private UserInterfaceInfoService userInterfaceInfoService;
 
     @Resource
     private KaApiClient kaApiClient;
@@ -82,6 +90,7 @@ public class InterfaceInfoController {
      * @return
      */
     @PostMapping("/delete")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteInterfaceInfo(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -92,10 +101,6 @@ public class InterfaceInfoController {
         InterfaceInfo oldInterfaceInfo = interfaceInfoService.getById(id);
         if (oldInterfaceInfo == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
-        }
-        // 仅本人或管理员可删除
-        if (!oldInterfaceInfo.getUserId().equals(user.getId()) || !userService.isAdmin(request)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean b = interfaceInfoService.removeById(id);
         return ResultUtils.success(b);
@@ -109,7 +114,9 @@ public class InterfaceInfoController {
      * @return
      */
     @PostMapping("/update")
-    public BaseResponse<Boolean> updateInterfaceInfo(@RequestBody InterfaceInfoUpdateRequest interfaceInfoUpdateRequest, HttpServletRequest request) {
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean>
+    updateInterfaceInfo(@RequestBody InterfaceInfoUpdateRequest interfaceInfoUpdateRequest, HttpServletRequest request) {
         if (interfaceInfoUpdateRequest == null || interfaceInfoUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -123,10 +130,6 @@ public class InterfaceInfoController {
         InterfaceInfo oldInterfaceInfo = interfaceInfoService.getById(id);
         if (oldInterfaceInfo == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
-        }
-        // 仅本人或管理员可修改
-        if (!oldInterfaceInfo.getUserId().equals(user.getId()) && !userService.isAdmin(request)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean result = interfaceInfoService.updateById(interfaceInfo);
         return ResultUtils.success(result);
@@ -183,15 +186,11 @@ public class InterfaceInfoController {
         long size = interfaceInfoQueryRequest.getPageSize();
         String sortField = interfaceInfoQueryRequest.getSortField();
         String sortOrder = interfaceInfoQueryRequest.getSortOrder();
-        String content = interfaceInfoQuery.getDescription();
-        // content 需支持模糊搜索
-        interfaceInfoQuery.setDescription(null);
-        // 限制爬虫
+
         if (size > 50) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         QueryWrapper<InterfaceInfo> queryWrapper = new QueryWrapper<>(interfaceInfoQuery);
-        queryWrapper.like(StringUtils.isNotBlank(content), "content", content);
         queryWrapper.orderBy(StringUtils.isNotBlank(sortField),
                 sortOrder.equals(CommonConstant.SORT_ORDER_ASC), sortField);
         Page<InterfaceInfo> interfaceInfoPage = interfaceInfoService.page(new Page<>(current, size), queryWrapper);
@@ -215,13 +214,6 @@ public class InterfaceInfoController {
         InterfaceInfo oldInterfaceInfo = interfaceInfoService.getById(id);
         if (oldInterfaceInfo == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
-        }
-        //判断接口是否可以调用
-        com.kaka.kaapiclientstarter.model.User user = new com.kaka.kaapiclientstarter.model.User();
-        user.setUsername("test");
-        String username = kaApiClient.getNameByUser(user);
-        if (StringUtils.isBlank(username)) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "接口调用失败");
         }
         //修改接口状态
         InterfaceInfo interfaceInfo = new InterfaceInfo();
@@ -265,31 +257,55 @@ public class InterfaceInfoController {
      */
     @PostMapping("/invoke")
     public BaseResponse<Object> invokeInterfaceInfo(@RequestBody InterfaceInfoInvoke interfaceInfoInvoke , HttpServletRequest request) {
-        long id = interfaceInfoInvoke.getId();
-        if (interfaceInfoInvoke.getUserRequestParams() == null || id <= 0) {
+        long interfaceInfoId = interfaceInfoInvoke.getId();
+        if (interfaceInfoInvoke.getUserRequestParams() == null || interfaceInfoId <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         //判断接口是否存在
-        InterfaceInfo oldInterfaceInfo = interfaceInfoService.getById(id);
+        InterfaceInfo oldInterfaceInfo = interfaceInfoService.getById(interfaceInfoId);
         if (oldInterfaceInfo == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
         if (oldInterfaceInfo.getStatus().equals(InterfaceInfoStatusEnum.OFFLINE.getValue())) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "接口已下线");
         }
-        //调用接口
+        //判断用户的调用次数是否充足
         User loginUser = userService.getLoginUser(request);
+        QueryWrapper<UserInterfaceInfo> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("interfaceInfoId", interfaceInfoId);
+        queryWrapper.eq("userId",loginUser.getId());
+        UserInterfaceInfo userInterfaceInfo = userInterfaceInfoService.getOne(queryWrapper);
+        if (userInterfaceInfo.getLeftNum() <= 0) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "调用次数不足");
+        }
+        //调用接口
         String accessKey = loginUser.getAccessKey();
         String secretKey = loginUser.getSecretKey();
         KaApiClient tempClient = new KaApiClient(accessKey, secretKey);
         String userRequestParams = interfaceInfoInvoke.getUserRequestParams();
-        Gson gson = new Gson();
-        com.kaka.kaapiclientstarter.model.User user = gson.fromJson(userRequestParams, com.kaka.kaapiclientstarter.model.User.class);
-        if(user.getUsername() == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数名称错误");
+        //处理参数
+        String invokeMethod = oldInterfaceInfo.getInvokeMethod();
+        Class<? extends KaApiClient> clazz = tempClient.getClass();
+        Method remoteMethod = null;
+        for (Method declaredMethod : clazz.getDeclaredMethods()) {
+            if(declaredMethod.getName().equals(invokeMethod)){
+                remoteMethod = declaredMethod;
+            }
         }
-        String nameByUser = tempClient.getNameByUser(user);
-        return ResultUtils.success(nameByUser);
+        if(remoteMethod == null) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "该API不存在");
+        }
+        Object invoke;
+        try {
+            invoke = remoteMethod.invoke(tempClient, userRequestParams);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        String res = invoke.toString();
+        if(res.startsWith("Error request") || res.endsWith("INTERNAL_SERVER_ERROR")){
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        return ResultUtils.success(invoke);
     }
 
 
