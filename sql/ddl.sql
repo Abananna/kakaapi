@@ -61,3 +61,10 @@ create table user_interface_info
     isDelete        tinyint  default 0                 not null comment '是否删除 0-未删 1-已删'
 )
     comment '用户调用接口关系表';
+
+-- 情话表
+create table rustic_word(
+    wId int primary key auto_increment comment '主键',
+    context varchar(255) not null comment '情话内容'
+) engine=myisam;
+

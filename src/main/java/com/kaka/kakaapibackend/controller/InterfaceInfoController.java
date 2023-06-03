@@ -1,8 +1,11 @@
 package com.kaka.kakaapibackend.controller;
 
+import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.google.gson.Gson;
+import com.kaka.kaapiclientstarter.client.KaApiClient;
+import com.kaka.kaapicommon.model.entity.InterfaceInfo;
+import com.kaka.kaapicommon.model.entity.User;
 import com.kaka.kaapicommon.model.entity.UserInterfaceInfo;
 import com.kaka.kakaapibackend.annotation.AuthCheck;
 import com.kaka.kakaapibackend.common.*;
@@ -13,13 +16,12 @@ import com.kaka.kakaapibackend.model.dto.interfaceinfo.InterfaceInfoAddRequest;
 import com.kaka.kakaapibackend.model.dto.interfaceinfo.InterfaceInfoInvoke;
 import com.kaka.kakaapibackend.model.dto.interfaceinfo.InterfaceInfoQueryRequest;
 import com.kaka.kakaapibackend.model.dto.interfaceinfo.InterfaceInfoUpdateRequest;
+import com.kaka.kakaapibackend.model.entity.RusticWord;
 import com.kaka.kakaapibackend.model.enums.InterfaceInfoStatusEnum;
 import com.kaka.kakaapibackend.service.InterfaceInfoService;
+import com.kaka.kakaapibackend.service.RusticWordService;
 import com.kaka.kakaapibackend.service.UserInterfaceInfoService;
 import com.kaka.kakaapibackend.service.UserService;
-import com.kaka.kaapiclientstarter.client.KaApiClient;
-import com.kaka.kaapicommon.model.entity.InterfaceInfo;
-import com.kaka.kaapicommon.model.entity.User;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -27,9 +29,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -52,7 +52,8 @@ public class InterfaceInfoController {
     private UserInterfaceInfoService userInterfaceInfoService;
 
     @Resource
-    private KaApiClient kaApiClient;
+    private RusticWordService rusticWordService;
+
 
     // region 增删改查
 
@@ -269,8 +270,16 @@ public class InterfaceInfoController {
         if (oldInterfaceInfo.getStatus().equals(InterfaceInfoStatusEnum.OFFLINE.getValue())) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "接口已下线");
         }
-        //判断用户的调用次数是否充足
         User loginUser = userService.getLoginUser(request);
+        if(interfaceInfoId == 25) {
+
+            int randomInt = RandomUtil.randomInt(1012);
+            RusticWord rusticWord = rusticWordService.getById(randomInt);
+            userInterfaceInfoService.invokeCount(oldInterfaceInfo.getId(), loginUser.getId());
+            return ResultUtils.success(rusticWord.getContext());
+        }
+        //判断用户的调用次数是否充足
+
         QueryWrapper<UserInterfaceInfo> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("interfaceInfoId", interfaceInfoId);
         queryWrapper.eq("userId",loginUser.getId());

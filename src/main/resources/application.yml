@@ -6,7 +6,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/kaka?serverTimezone=UTC
     username: root
-    password:
+    password: Ybmq.785679
   mvc:
     pathmatch:
       matching-strategy: ANT_PATH_MATCHER
@@ -44,4 +44,22 @@ mybatis-plus:
       logic-delete-field: isDelete # 全局逻辑删除的实体字段名(since 3.3.0,配置后可以忽略不配置步骤2)
       logic-delete-value: 1 # 逻辑已删除值(默认为 1)
       logic-not-delete-value: 0 # 逻辑未删除值(默认为 0)
+#图床配置
+aliyun:
+  oss:
+    # oss对外服务的访问域名
+    endpoint: oss-cn-beijing.aliyuncs.com
+    # 访问身份验证中用到用户标识
+    accessKeyId: LTAI5t85SfDtjtcot16eKvBX
+    # 用户用于加密签名字符串和oss用来验证签名字符串的密钥
+    accessKeySecret: s5C7B2q9A9xWQSn7AGu8WEwxlqXbqF
+    # oss的存储空间
+    bucketName: kaapi-avatar
+    # 上传文件大小(M)
+    maxSize: 3
+    # 上传文件夹路径前缀
+    dir:
+      prefix: userAvatar/
+
+
 
